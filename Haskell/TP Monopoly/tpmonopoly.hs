@@ -11,90 +11,90 @@ import Text.Show.Functions ()
 data Participante = Participante {
     nombre :: Nombre,
     cantidadDeDinero :: CantidadDeDinero,
-    tactica :: [Tactica], 
-    propiedad :: [Propiedad],
-    accion :: [Accion] 
+    tactica :: Tactica, 
+    propiedades :: [Propiedad],
+    acciones :: [Accion] 
 } deriving Show
 
+data Propiedad = Propiedad {
+    nombrePropiedad :: NombrePropiedad,
+    precio :: PrecioPropiedad
+} deriving Show
+
+type NombrePropiedad = String
+type PrecioPropiedad = Int
 type Nombre = String
 type CantidadDeDinero = Int
 type Tactica = String
-type Propiedad = (String, Int)
 type Accion = Participante -> Participante
 
 
 -- Participantes
 
 manuel :: Participante
-manuel = Participante "Manuel" 500 ["Oferente singular"] [] [pasarPorElBanco, enojarse]
+manuel = Participante "Manuel" 500 "Oferente singular" [] [pasarPorElBanco, enojarse]
 
 carolina :: Participante
-carolina = Participante "Carolina" 500 ["Accionista"] [] [pasarPorElBanco, pagarAAccionista] 
-
--- CASO PARA PRUEBAS --
-
-javier :: Participante 
-javier = Participante "Javier R." 700 ["Prestamista", "Accionista"] [("Casita Feliz", 300), ("Casita Hiper Feliz", 145), ("Casa en la playa", 150), ("Casa en la montania", 120)] [pasarPorElBanco, gritar, enojarse]
-
--- CASO PARA PRUEBAS --
-
+carolina = Participante "Carolina" 500 "Accionista" [] [pasarPorElBanco, pagarAAccionista] 
 
 -- Acciones
 
 
 pasarPorElBanco :: Accion
-pasarPorElBanco unParticipante = unParticipante {cantidadDeDinero = (+ 40) . cantidadDeDinero $ unParticipante, tactica = ["Comprador compulsivo"]} 
+pasarPorElBanco = mapTactica ((++) "Comprador Compulsivo") . mapCantidadDinero (+ 40) 
 
 
 enojarse :: Accion
-enojarse unParticipante = unParticipante {cantidadDeDinero = (+ 50). cantidadDeDinero $ unParticipante, accion = (++ [gritar]) . accion $ unParticipante} 
+enojarse = mapAccion ((:) gritar) . mapCantidadDinero (+ 50)
 
 
 gritar :: Accion
-gritar unParticipante = unParticipante {nombre = ("AHHHH " ++) . nombre $ unParticipante}
+gritar = mapNombre ("AHHHH" ++)
 
 
 subastar :: Propiedad -> Accion
 subastar unaPropiedad unParticipante 
-    | tieneTactica "Oferente Singular" unParticipante || tieneTactica "Accionista" unParticipante = comprarCasa unaPropiedad unParticipante
-    | otherwise                                                                                   = unParticipante
+    | tieneTactica . tactica $ unParticipante = comprarCasa unaPropiedad unParticipante
+    | otherwise                               = unParticipante
 
 
 cobrarAlquileres :: Accion
-cobrarAlquileres unParticipante = unParticipante {cantidadDeDinero = (+) (cantidadDeDinero unParticipante) (totalAlquiler unParticipante) }
+cobrarAlquileres  unParticipante = mapCantidadDinero (+ totalAlquiler unParticipante) unParticipante
 
 
 pagarAAccionista :: Accion
 pagarAAccionista unParticipante
-    | tieneTactica "Accionista" unParticipante = unParticipante {cantidadDeDinero = (+ 200) . cantidadDeDinero $ unParticipante} 
-    | otherwise                                = unParticipante {cantidadDeDinero = (+ (-100)) . cantidadDeDinero $ unParticipante}
-                                                                                                       -- No me deja poner (-100)
+    | tieneTactica . tactica $ unParticipante  = mapCantidadDinero (+ 200) unParticipante
+    | otherwise                                = mapCantidadDinero (subtract 100) unParticipante
+
 
 hacerBerrinche :: Propiedad -> Accion
 hacerBerrinche unaPropiedad unParticipante
-    | snd unaPropiedad > cantidadDeDinero unParticipante = hacerBerrinche unaPropiedad unParticipante {cantidadDeDinero = (+ 10) . cantidadDeDinero $ unParticipante, accion = accion unParticipante ++ [gritar]}
-    | otherwise                                          = comprarCasa unaPropiedad unParticipante
+    | precio unaPropiedad > cantidadDeDinero unParticipante = hacerBerrinche unaPropiedad (mapAccion ((:) gritar) . mapCantidadDinero (+ 10) $ unParticipante) -- ¿Repetición de Lógica?
+    | otherwise                                             = comprarCasa unaPropiedad unParticipante
 
 
 ultimaRonda :: Participante -> Accion
-ultimaRonda unParticipante = foldl1 (.) $ accion unParticipante
+ultimaRonda unParticipante = foldl1 (.) $ acciones unParticipante
 
-juegoFinal :: Participante -> Participante -> Participante
+juegoFinal :: Participante -> Participante -> Accion
 juegoFinal unParticipante otroParticipante
-    | (< dineroFinalTotal unParticipante) . dineroFinalTotal $ otroParticipante = unParticipante
-    | otherwise                                                                 = otroParticipante
+    | (< dineroFinalTotal unParticipante) . dineroFinalTotal $ otroParticipante = ultimaRonda unParticipante
+    | otherwise                                                                 = ultimaRonda otroParticipante
 
 
 -- Funciones Auxiliares
 
 comprarCasa :: Propiedad -> Accion
-comprarCasa unaPropiedad unParticipante = unParticipante {cantidadDeDinero = (cantidadDeDinero unParticipante -) . snd $ unaPropiedad, propiedad = (++ [unaPropiedad]) . propiedad $ unParticipante}
+comprarCasa unaPropiedad = mapPropiedad ((:) unaPropiedad) . mapCantidadDinero (subtract . precio $ unaPropiedad) 
 
-tieneTactica :: Tactica -> Participante -> Bool
-tieneTactica unaTactica unParticipante = elem unaTactica (tactica unParticipante)
+tieneTactica :: Tactica -> Bool
+tieneTactica "Accionista"        = True
+tieneTactica "Oferente Singular" = True
+tieneTactica _                   = False
 
 preciosPropiedades :: Participante -> [Int]
-preciosPropiedades = (map snd) . propiedad
+preciosPropiedades = (map precio) . propiedades
 
 cantidadDePropiedadesCaras :: Participante -> Int
 cantidadDePropiedadesCaras unParticipante = length $ filter (< 150) (preciosPropiedades unParticipante)
@@ -103,10 +103,25 @@ alquilerDePropiedadesCaras :: Participante -> Int
 alquilerDePropiedadesCaras = (* 20) . cantidadDePropiedadesCaras
 
 propiedadesTotales :: Participante -> Int
-propiedadesTotales = length . propiedad 
+propiedadesTotales = length . propiedades
 
 totalAlquiler :: Participante -> Int
 totalAlquiler unParticipante = (+) (alquilerDePropiedadesCaras unParticipante) (10 * (propiedadesTotales unParticipante - cantidadDePropiedadesCaras unParticipante))
 
 dineroFinalTotal :: Participante -> Int
 dineroFinalTotal unParticipante = cantidadDeDinero . (ultimaRonda unParticipante) $ unParticipante
+
+mapNombre :: (Nombre -> Nombre) -> Participante -> Participante
+mapNombre funcion unParticipante = unParticipante {nombre = funcion . nombre $ unParticipante}
+
+mapCantidadDinero :: (CantidadDeDinero -> CantidadDeDinero) -> Participante -> Participante
+mapCantidadDinero funcion unParticipante = unParticipante {cantidadDeDinero = funcion . cantidadDeDinero $ unParticipante}
+
+mapTactica :: (Tactica -> Tactica) -> Participante -> Participante
+mapTactica funcion unParticipante = unParticipante {tactica = funcion . tactica $ unParticipante}
+
+mapPropiedad :: ([Propiedad] -> [Propiedad]) -> Participante -> Participante
+mapPropiedad funcion unParticipante = unParticipante {propiedades = funcion . propiedades $ unParticipante}
+
+mapAccion :: ([Accion] -> [Accion]) -> Participante -> Participante
+mapAccion funcion unParticipante = unParticipante {acciones = funcion . acciones $ unParticipante}
