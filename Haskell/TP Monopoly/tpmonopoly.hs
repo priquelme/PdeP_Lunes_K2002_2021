@@ -41,7 +41,7 @@ carolina = Participante "Carolina" 500 "Accionista" [] [pasarPorElBanco, pagarAA
 
 
 pasarPorElBanco :: Accion
-pasarPorElBanco = mapTactica ((++) "Comprador Compulsivo") . mapCantidadDinero (+ 40) 
+pasarPorElBanco = mapTactica (const "Comprador Compulsivo") . mapCantidadDinero (+ 40) 
 
 
 enojarse :: Accion
@@ -125,3 +125,21 @@ mapPropiedad funcion unParticipante = unParticipante {propiedades = funcion . pr
 
 mapAccion :: ([Accion] -> [Accion]) -> Participante -> Participante
 mapAccion funcion unParticipante = unParticipante {acciones = funcion . acciones $ unParticipante}
+
+-- Arreglar declaratividad cobrarAlquileres
+
+{-
+esPropiedadBarata :: Propiedad -> Bool
+esPropiedadBarata propiedad = precioPropiedad propiedad < 150
+
+precioAlquiler :: Propiedad -> Int
+precioAlquiler propiedad
+  | esPropiedadBarata propiedad = 10
+  | otherwise                   = 20
+
+ingresosPorAlquileres :: Persona -> Int
+ingresosPorAlquileres persona = sum . map precioAlquiler . propiedades $ persona
+
+cobrarAlquileres :: Accion
+cobrarAlquileres persona = cambiarDinero ((+).ingresosPorAlquileres $ persona) persona
+-}
